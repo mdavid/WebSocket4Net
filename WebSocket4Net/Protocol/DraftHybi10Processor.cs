@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 #endif
 using System.IO;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using SuperSocket.ClientEngine;
@@ -18,56 +17,59 @@ namespace WebSocket4Net.Protocol
     {
         private const string m_Magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
-        private string m_ExpectedAcceptKey;
+        private string m_ExpectedAcceptKey = "ExpectedAccept";
 
-        protected readonly string m_VersionCode;
+        private static Random m_Random = new Random();
 
         public DraftHybi10Processor()
-            : this("8")
+            : base(WebSocketVersion.DraftHybi10, new CloseStatusCodeHybi10())
         {
         }
 
-        protected DraftHybi10Processor(string versionCode)
+        protected DraftHybi10Processor(WebSocketVersion version, ICloseStatusCode closeStatusCode)
+            : base(version, closeStatusCode)
         {
-            m_VersionCode = versionCode;
+
         }
 
-        public override void SendHandshake()
+        public override void SendHandshake(WebSocket websocket)
         {
-            var secKey = Guid.NewGuid().ToString().Substring(0, 5);
-
 #if !SILVERLIGHT
-            m_ExpectedAcceptKey = Convert.ToBase64String(SHA1.Create().ComputeHash(Encoding.ASCII.GetBytes(secKey + m_Magic)));
+            var secKey = Convert.ToBase64String(Encoding.ASCII.GetBytes(Guid.NewGuid().ToString().Substring(0, 16)));
+            string expectedAccept = Convert.ToBase64String(SHA1.Create().ComputeHash(Encoding.ASCII.GetBytes(secKey + m_Magic)));
 #else
-            m_ExpectedAcceptKey = Convert.ToBase64String(SHA1.Create().ComputeHash(ASCIIEncoding.Instance.GetBytes(secKey + m_Magic)));
+            var secKey = Convert.ToBase64String(ASCIIEncoding.Instance.GetBytes(Guid.NewGuid().ToString().Substring(0, 16)));
+            string expectedAccept = Convert.ToBase64String(SHA1.Create().ComputeHash(ASCIIEncoding.Instance.GetBytes(secKey + m_Magic)));
 #endif
+
+            websocket.Items[m_ExpectedAcceptKey] = expectedAccept;
 
             var handshakeBuilder = new StringBuilder();
 
 #if SILVERLIGHT
-            handshakeBuilder.AppendFormatWithCrCf("GET {0} HTTP/1.1", WebSocket.TargetUri.GetPathAndQuery());
+            handshakeBuilder.AppendFormatWithCrCf("GET {0} HTTP/1.1", websocket.TargetUri.GetPathAndQuery());
 #else
-            handshakeBuilder.AppendFormatWithCrCf("GET {0} HTTP/1.1", WebSocket.TargetUri.PathAndQuery);
+            handshakeBuilder.AppendFormatWithCrCf("GET {0} HTTP/1.1", websocket.TargetUri.PathAndQuery);
 #endif
 
             handshakeBuilder.AppendWithCrCf("Upgrade: WebSocket");
             handshakeBuilder.AppendWithCrCf("Connection: Upgrade");
             handshakeBuilder.Append("Sec-WebSocket-Version: ");
-            handshakeBuilder.AppendWithCrCf(m_VersionCode);
+            handshakeBuilder.AppendWithCrCf(VersionTag);
             handshakeBuilder.Append("Sec-WebSocket-Key: ");
             handshakeBuilder.AppendWithCrCf(secKey);
             handshakeBuilder.Append("Host: ");
-            handshakeBuilder.AppendWithCrCf(WebSocket.TargetUri.Host);
+            handshakeBuilder.AppendWithCrCf(websocket.HandshakeHost);
             handshakeBuilder.Append("Origin: ");
-            handshakeBuilder.AppendWithCrCf(WebSocket.TargetUri.Host);
+            handshakeBuilder.AppendWithCrCf(string.IsNullOrEmpty(websocket.Origin) ? websocket.TargetUri.Host : websocket.Origin);
 
-            if (!string.IsNullOrEmpty(WebSocket.SubProtocol))
+            if (!string.IsNullOrEmpty(websocket.SubProtocol))
             {
                 handshakeBuilder.Append("Sec-WebSocket-Protocol: ");
-                handshakeBuilder.AppendWithCrCf(WebSocket.SubProtocol);
+                handshakeBuilder.AppendWithCrCf(websocket.SubProtocol);
             }
 
-            var cookies = WebSocket.Cookies;
+            var cookies = websocket.Cookies;
 
             if (cookies != null && cookies.Count > 0)
             {
@@ -83,51 +85,63 @@ namespace WebSocket4Net.Protocol
                 handshakeBuilder.AppendWithCrCf(string.Join(";", cookiePairs));
             }
 
+            if (websocket.CustomHeaderItems != null)
+            {
+                for (var i = 0; i < websocket.CustomHeaderItems.Count; i++)
+                {
+                    var item = websocket.CustomHeaderItems[i];
+
+                    handshakeBuilder.AppendFormatWithCrCf(HeaderItemFormat, item.Key, item.Value);
+                }
+            }
+
             handshakeBuilder.AppendWithCrCf();
 
             byte[] handshakeBuffer = Encoding.UTF8.GetBytes(handshakeBuilder.ToString());
 
-            Client.Send(handshakeBuffer, 0, handshakeBuffer.Length);
+            websocket.Client.Send(handshakeBuffer, 0, handshakeBuffer.Length);
         }
 
-        public override ReaderBase CreateHandshakeReader()
+        public override ReaderBase CreateHandshakeReader(WebSocket websocket)
         {
-            return new DraftHybi10HandshakeReader(WebSocket);
+            return new DraftHybi10HandshakeReader(websocket);
         }
 
-        private void SendMessage(int opCode, string message)
+        private void SendMessage(WebSocket websocket, int opCode, string message)
         {
             byte[] playloadData = Encoding.UTF8.GetBytes(message);
-            SendDataFragment(opCode, playloadData, 0, playloadData.Length);
+            SendDataFragment(websocket, opCode, playloadData, 0, playloadData.Length);
         }
 
-        private void SendDataFragment(int opCode, byte[] playloadData, int offset, int length)
+        private void SendDataFragment(WebSocket websocket, int opCode, byte[] playloadData, int offset, int length)
         {
-            byte[] headData;
+            byte[] fragment;
+
+            int maskLength = 4;
 
             if (length < 126)
             {
-                headData = new byte[2];
-                headData[1] = (byte)length;
+                fragment = new byte[2 + maskLength + length];
+                fragment[1] = (byte)length;
             }
             else if (length < 65536)
             {
-                headData = new byte[4];
-                headData[1] = (byte)126;
-                headData[2] = (byte)(length / 256);
-                headData[3] = (byte)(length % 256);
+                fragment = new byte[4 + maskLength + length];
+                fragment[1] = (byte)126;
+                fragment[2] = (byte)(length / 256);
+                fragment[3] = (byte)(length % 256);
             }
             else
             {
-                headData = new byte[10];
-                headData[1] = (byte)127;
+                fragment = new byte[10 + maskLength + length];
+                fragment[1] = (byte)127;
 
                 int left = length;
                 int unit = 256;
 
                 for (int i = 9; i > 1; i--)
                 {
-                    headData[i] = (byte)(left % unit);
+                    fragment[i] = (byte)(left % unit);
                     left = left / unit;
 
                     if (left == 0)
@@ -135,111 +149,135 @@ namespace WebSocket4Net.Protocol
                 }
             }
 
-            headData[0] = (byte)(opCode | 0x80);
+            //Set FIN
+            fragment[0] = (byte)(opCode | 0x80);
 
-            Client.Send(new ArraySegment<byte>[]
-                {
-                    new ArraySegment<byte>(headData, 0, headData.Length),
-                    new ArraySegment<byte>(playloadData, offset, length)
-                });
+            //Set mask bit
+            fragment[1] = (byte)(fragment[1] | 0x80);
+
+            GenerateMask(fragment, fragment.Length - maskLength - length);
+
+            if(length > 0)
+                MaskData(playloadData, offset, length, fragment, fragment.Length - length, fragment, fragment.Length - maskLength - length);
+
+            websocket.Client.Send(fragment, 0, fragment.Length);
         }
 
-        public override void SendData(byte[] data, int offset, int length)
+        public override void SendData(WebSocket websocket, byte[] data, int offset, int length)
         {
-            SendDataFragment(OpCode.Binary, data, offset, length);
+            SendDataFragment(websocket, OpCode.Binary, data, offset, length);
         }
 
-        public override void SendMessage(string message)
+        public override void SendMessage(WebSocket websocket, string message)
         {
-            SendMessage(OpCode.Text, message);
+            SendMessage(websocket, OpCode.Text, message);
         }
 
-        public override void SendCloseHandshake(string closeReason)
+        public override void SendCloseHandshake(WebSocket websocket, int statusCode, string closeReason)
         {
-            SendMessage(OpCode.Close, closeReason);
-        }
+            int size = (string.IsNullOrEmpty(closeReason) ? 0 : Encoding.UTF8.GetMaxByteCount(closeReason.Length)) + 2;
 
-        public override void SendPing(string ping)
-        {
-            SendMessage(OpCode.Ping, ping);
-        }
+            byte[] playloadData = new byte[size];
 
-        private NameValueCollection ParseHandshake(string handshake)
-        {
-            var items = new NameValueCollection();
+            int highByte = statusCode / 256;
+            int lowByte = statusCode % 256;
 
-            string line;
-            string firstLine = string.Empty;
-            string prevKey = string.Empty;
+            playloadData[0] = (byte)highByte;
+            playloadData[1] = (byte)lowByte;
 
-            var reader = new StringReader(handshake);
-
-            while (!string.IsNullOrEmpty(line = reader.ReadLine()))
+            if (!string.IsNullOrEmpty(closeReason))
             {
-                if (string.IsNullOrEmpty(firstLine))
-                {
-                    firstLine = line;
-                    continue;
-                }
-
-                if (line.StartsWith("\t") && !string.IsNullOrEmpty(prevKey))
-                {
-                    string currentValue = items.GetValue(prevKey, string.Empty);
-                    items[prevKey] = currentValue + line.Trim();
-                    continue;
-                }
-
-                int pos = line.IndexOf(':');
-
-                string key = line.Substring(0, pos);
-
-                if (!string.IsNullOrEmpty(key))
-                    key = key.Trim();
-
-                string value = line.Substring(pos + 1);
-                if (!string.IsNullOrEmpty(value) && value.StartsWith(" ") && value.Length > 1)
-                    value = value.Substring(1);
-
-                if (string.IsNullOrEmpty(key))
-                    continue;
-
-                items[key] = value;
-                prevKey = key;
+                int bytesCount = Encoding.UTF8.GetBytes(closeReason, 0, closeReason.Length, playloadData, 2);
+                SendDataFragment(websocket, OpCode.Close, playloadData, 0, bytesCount + 2);
             }
-
-            return items;
+            else
+            {
+                SendDataFragment(websocket, OpCode.Close, playloadData, 0, playloadData.Length);
+            }
         }
 
-        public override bool VerifyHandshake(WebSocketCommandInfo handshakeInfo)
+        public override void SendPing(WebSocket websocket, string ping)
+        {
+            SendMessage(websocket, OpCode.Ping, ping);
+        }
+
+        public override void SendPong(WebSocket websocket, string pong)
+        {
+            SendMessage(websocket, OpCode.Pong, pong);
+        }
+
+        private const string m_Error_InvalidHandshake = "invalid handshake";
+        private const string m_Error_SubProtocolNotMatch = "subprotocol doesn't match";
+        private const string m_Error_AcceptKeyNotMatch = "accept key doesn't match";
+
+        public override bool VerifyHandshake(WebSocket websocket, WebSocketCommandInfo handshakeInfo, out string description)
         {
             var handshake = handshakeInfo.Text;
 
             if (string.IsNullOrEmpty(handshake))
-                return false;
-
-            var items = ParseHandshake(handshake);
-
-            if (!string.IsNullOrEmpty(WebSocket.SubProtocol))
             {
-                var protocol = items.GetValue("Sec-WebSocket-Protocol", string.Empty);
-
-                if (!WebSocket.SubProtocol.Equals(protocol, StringComparison.OrdinalIgnoreCase))
-                    return false;
+                description = m_Error_InvalidHandshake;
+                return false;
             }
 
-            var acceptKey = items.GetValue("Sec-WebSocket-Accept", string.Empty);
-
-            if (!m_ExpectedAcceptKey.Equals(acceptKey, StringComparison.OrdinalIgnoreCase))
+            if (!handshakeInfo.Text.ParseMimeHeader(websocket.Items))
+            {
+                description = m_Error_InvalidHandshake;
                 return false;
+            }
+
+            if (!string.IsNullOrEmpty(websocket.SubProtocol))
+            {
+                var protocol = websocket.Items.GetValue("Sec-WebSocket-Protocol", string.Empty);
+
+                if (!websocket.SubProtocol.Equals(protocol, StringComparison.OrdinalIgnoreCase))
+                {
+                    description = m_Error_SubProtocolNotMatch;
+                    return false;
+                }
+            }
+
+            var acceptKey = websocket.Items.GetValue("Sec-WebSocket-Accept", string.Empty);
+            var expectedAcceptKey = websocket.Items.GetValue(m_ExpectedAcceptKey, string.Empty);
+
+            if (!expectedAcceptKey.Equals(acceptKey, StringComparison.OrdinalIgnoreCase))
+            {
+                description = m_Error_AcceptKeyNotMatch;
+                return false;
+            }
 
             //more validations
-
+            description = string.Empty;
             return true;
         }
 
         public override bool SupportBinary
         {
             get { return true; }
+        }
+
+        public override bool SupportPingPong
+        {
+            get { return true; }
+        }
+
+        private void GenerateMask(byte[] mask, int offset)
+        {
+            int maxPos = Math.Min(offset + 4, mask.Length);
+
+            for (var i = offset; i < maxPos; i++)
+            {
+                mask[i] = (byte)m_Random.Next(0, 255);
+            }
+        }
+
+        private void MaskData(byte[] rawData, int offset, int length, byte[] outputData, int outputOffset, byte[] mask, int maskOffset)
+        {
+            for (var i = 0; i < length; i++)
+            {
+                var pos = offset + i;
+                outputData[outputOffset++] = (byte)(rawData[pos] ^ mask[maskOffset + i % 4]);
+            }
         }
     }
 }

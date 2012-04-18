@@ -6,7 +6,7 @@
     <ProductVersion>8.0.50727</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{57D44E92-7B6F-4F3D-8755-FBB1E1456C36}</ProjectGuid>
-    <ProjectTypeGuids>{A1591282-1198-4647-A2B1-27E5FF5F6F3B};{fae04ec0-301f-11d3-bf4b-00c04f79efbc}</ProjectTypeGuids>
+    <ProjectTypeGuids>{A1591282-1198-4647-A2B1-27E5FF5F6F3B};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>WebSocket4Net</RootNamespace>
@@ -28,7 +28,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\Bin\Silverlight\Debug\</OutputPath>
+    <OutputPath>..\Bin\sl40\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE;SILVERLIGHT</DefineConstants>
     <NoStdLib>true</NoStdLib>
     <NoConfig>true</NoConfig>
@@ -38,26 +38,41 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>..\Bin\Silverlight\Release\</OutputPath>
+    <OutputPath>..\Bin\sl40\Release\</OutputPath>
     <DefineConstants>TRACE;SILVERLIGHT</DefineConstants>
     <NoStdLib>true</NoStdLib>
     <NoConfig>true</NoConfig>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup>
+    <SignAssembly>true</SignAssembly>
+  </PropertyGroup>
+  <PropertyGroup>
+    <AssemblyOriginatorKeyFile>..\websocket4net.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
-    <Reference Include="Newtonsoft.Json">
-      <HintPath>..\Reference\Json.NET\Silverlight\Newtonsoft.Json.dll</HintPath>
+    <Reference Include="SimpleJson">
+      <HintPath>..\Reference\SimpleJson\SL4\SimpleJson.dll</HintPath>
     </Reference>
-    <Reference Include="SuperSocket.ClientEngine">
-      <HintPath>..\Reference\SuperSocket\Silverlight\SuperSocket.ClientEngine.dll</HintPath>
+    <Reference Include="SuperSocket.ClientEngine.Common">
+      <HintPath>..\Reference\SuperSocket.ClientEngine\SL40\$(Configuration)\SuperSocket.ClientEngine.Common.dll</HintPath>
     </Reference>
-    <Reference Include="system" />
+    <Reference Include="SuperSocket.ClientEngine.Core">
+      <HintPath>..\Reference\SuperSocket.ClientEngine\SL40\$(Configuration)\SuperSocket.ClientEngine.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="SuperSocket.ClientEngine.Protocol">
+      <HintPath>..\Reference\SuperSocket.ClientEngine\SL40\$(Configuration)\SuperSocket.ClientEngine.Protocol.dll</HintPath>
+    </Reference>
     <Reference Include="System.Core" />
     <Reference Include="System.Net" />
+    <Reference Include="System" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\WebSocket4Net\Command\BadRequest.cs">
+      <Link>Command\BadRequest.cs</Link>
+    </Compile>
     <Compile Include="..\WebSocket4Net\Command\Binary.cs">
       <Link>Command\Binary.cs</Link>
     </Compile>
@@ -66,6 +81,9 @@
     </Compile>
     <Compile Include="..\WebSocket4Net\Command\Handshake.cs">
       <Link>Command\Handshake.cs</Link>
+    </Compile>
+    <Compile Include="..\WebSocket4Net\Command\Ping.cs">
+      <Link>Command\Ping.cs</Link>
     </Compile>
     <Compile Include="..\WebSocket4Net\Command\Pong.cs">
       <Link>Command\Pong.cs</Link>
@@ -99,6 +117,12 @@
     </Compile>
     <Compile Include="..\WebSocket4Net\OpCode.cs">
       <Link>OpCode.cs</Link>
+    </Compile>
+    <Compile Include="..\WebSocket4Net\Protocol\CloseStatusCodeHybi10.cs">
+      <Link>Protocol\CloseStatusCodeHybi10.cs</Link>
+    </Compile>
+    <Compile Include="..\WebSocket4Net\Protocol\CloseStatusCodeRfc6455.cs">
+      <Link>Protocol\CloseStatusCodeRfc6455.cs</Link>
     </Compile>
     <Compile Include="..\WebSocket4Net\Protocol\DraftHybi00DataReader.cs">
       <Link>Protocol\DraftHybi00DataReader.cs</Link>
@@ -139,11 +163,17 @@
     <Compile Include="..\WebSocket4Net\Protocol\HandshakeReader.cs">
       <Link>Protocol\HandshakeReader.cs</Link>
     </Compile>
+    <Compile Include="..\WebSocket4Net\Protocol\ICloseStatusCode.cs">
+      <Link>Protocol\ICloseStatusCode.cs</Link>
+    </Compile>
     <Compile Include="..\WebSocket4Net\Protocol\IProtocolProcessor.cs">
       <Link>Protocol\IProtocolProcessor.cs</Link>
     </Compile>
     <Compile Include="..\WebSocket4Net\Protocol\ProtocolProcessorBase.cs">
       <Link>Protocol\ProtocolProcessorBase.cs</Link>
+    </Compile>
+    <Compile Include="..\WebSocket4Net\Protocol\ProtocolProcessorFactory.cs">
+      <Link>Protocol\ProtocolProcessorFactory.cs</Link>
     </Compile>
     <Compile Include="..\WebSocket4Net\Protocol\ReaderBase.cs">
       <Link>Protocol\ReaderBase.cs</Link>
@@ -169,7 +199,6 @@
     <Compile Include="..\WebSocket4Net\WebSocketVersion.cs">
       <Link>WebSocketVersion.cs</Link>
     </Compile>
-    <Compile Include="ASCIIEncoding.cs" />
     <Compile Include="Extensions.Silverlight.cs" />
     <Compile Include="MD5.cs" />
     <Compile Include="MD5Managed.cs" />

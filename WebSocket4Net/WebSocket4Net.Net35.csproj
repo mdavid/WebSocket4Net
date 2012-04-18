@@ -18,7 +18,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\bin\Net35\Debug\</OutputPath>
+    <OutputPath>..\bin\net35\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -26,25 +26,39 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>..\bin\Net35\Release\</OutputPath>
+    <OutputPath>..\bin\net35\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup>
+    <SignAssembly>true</SignAssembly>
+  </PropertyGroup>
+  <PropertyGroup>
+    <AssemblyOriginatorKeyFile>..\websocket4net.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Newtonsoft.Json">
-      <HintPath>..\Reference\Json.NET\Net35\Newtonsoft.Json.dll</HintPath>
+    <Reference Include="SimpleJson">
+      <HintPath>..\Reference\SimpleJson\Net35\SimpleJson.dll</HintPath>
     </Reference>
-    <Reference Include="SuperSocket.ClientEngine">
-      <HintPath>..\Reference\SuperSocket\Net35\SuperSocket.ClientEngine.dll</HintPath>
+    <Reference Include="SuperSocket.ClientEngine.Common">
+      <HintPath>..\Reference\SuperSocket.ClientEngine\Net35\$(Configuration)\SuperSocket.ClientEngine.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="SuperSocket.ClientEngine.Core">
+      <HintPath>..\Reference\SuperSocket.ClientEngine\Net35\$(Configuration)\SuperSocket.ClientEngine.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="SuperSocket.ClientEngine.Protocol">
+      <HintPath>..\Reference\SuperSocket.ClientEngine\Net35\$(Configuration)\SuperSocket.ClientEngine.Protocol.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Command\BadRequest.cs" />
     <Compile Include="Command\Binary.cs" />
     <Compile Include="Command\Close.cs" />
     <Compile Include="Command\Handshake.cs" />
+    <Compile Include="Command\Ping.cs" />
     <Compile Include="Command\WebSocketCommandBase.cs" />
     <Compile Include="Command\Pong.cs" />
     <Compile Include="Command\Text.cs" />
@@ -57,6 +71,8 @@
     <Compile Include="MessageReceivedEventArgs.cs" />
     <Compile Include="OpCode.cs" />
     <Compile Include="Properties\AssemblyInfo.Net35.cs" />
+    <Compile Include="Protocol\CloseStatusCodeHybi10.cs" />
+    <Compile Include="Protocol\CloseStatusCodeRfc6455.cs" />
     <Compile Include="Protocol\DraftHybi00DataReader.cs" />
     <Compile Include="Protocol\DraftHybi00HandshakeReader.cs" />
     <Compile Include="Protocol\DraftHybi00Processor.cs" />
@@ -70,19 +86,20 @@
     <Compile Include="Protocol\FramePartReader\MaskKeyReader.cs" />
     <Compile Include="Protocol\FramePartReader\PayloadDataReader.cs" />
     <Compile Include="Protocol\HandshakeReader.cs" />
+    <Compile Include="Protocol\ICloseStatusCode.cs" />
     <Compile Include="Protocol\IProtocolProcessor.cs" />
     <Compile Include="Protocol\ProtocolProcessorBase.cs" />
+    <Compile Include="Protocol\ProtocolProcessorFactory.cs" />
     <Compile Include="Protocol\ReaderBase.cs" />
     <Compile Include="Protocol\Rfc6455Processor.cs" />
     <Compile Include="Protocol\WebSocketDataFrame.cs" />
     <Compile Include="WebSocket.cs" />
-    <Compile Include="WebSocket.Net.cs" />
+    <Compile Include="WebSocket.Net35.cs" />
     <Compile Include="WebSocketCommandInfo.cs" />
     <Compile Include="WebSocketContext.cs" />
     <Compile Include="WebSocketState.cs" />
     <Compile Include="WebSocketVersion.cs" />
   </ItemGroup>
-  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

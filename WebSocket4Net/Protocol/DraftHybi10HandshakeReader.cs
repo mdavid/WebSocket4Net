@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 namespace WebSocket4Net.Protocol
@@ -20,7 +19,10 @@ namespace WebSocket4Net.Protocol
             if (cmdInfo == null)
                 return null;
 
-            NextCommandReader = new DraftHybi10DataReader();
+            //If bad request, NextCommandReader will still be this HandshakeReader
+            if (!BadRequestCode.Equals(cmdInfo.Key))
+                NextCommandReader = new DraftHybi10DataReader();
+            
             return cmdInfo;
         }
     }

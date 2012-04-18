@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 namespace WebSocket4Net.Protocol
@@ -11,7 +10,7 @@ namespace WebSocket4Net.Protocol
     class Rfc6455Processor : DraftHybi10Processor
     {
         public Rfc6455Processor()
-            : base("13")
+            : base(WebSocketVersion.Rfc6455, new CloseStatusCodeRfc6455())
         {
 
         }

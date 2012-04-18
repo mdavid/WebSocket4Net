@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using SuperSocket.ClientEngine;
 
@@ -8,6 +7,10 @@ namespace WebSocket4Net.Protocol
 {
     class HandshakeReader : ReaderBase
     {
+        private const string m_BadRequestPrefix = "HTTP/1.1 400 ";
+
+        protected static readonly string BadRequestCode = OpCode.BadRequest.ToString();
+
         static HandshakeReader()
         {
 
@@ -19,7 +22,7 @@ namespace WebSocket4Net.Protocol
             m_HeadSeachState = new SearchMarkState<byte>(HeaderTerminator);
         }
 
-        protected static readonly byte[] HeaderTerminator = Encoding.UTF8.GetBytes(Environment.NewLine + Environment.NewLine);
+        protected static readonly byte[] HeaderTerminator = Encoding.UTF8.GetBytes("\r\n\r\n");
 
         private SearchMarkState<byte> m_HeadSeachState;
 
@@ -29,6 +32,8 @@ namespace WebSocket4Net.Protocol
         {
             left = 0;
 
+            var prevMatched = m_HeadSeachState.Matched;
+
             var result = readBuffer.SearchMark(offset, length, m_HeadSeachState);
 
             if (result < 0)
@@ -37,21 +42,46 @@ namespace WebSocket4Net.Protocol
                 return null;
             }
 
-            BufferSegments.AddSegment(readBuffer, offset, result - offset, false);
+            int findLen = result - offset;
+            string handshake = string.Empty;
 
-            string handshake = BufferSegments.Decode(Encoding.UTF8);
+            if (this.BufferSegments.Count > 0)
+            {
+                if (findLen > 0)
+                {
+                    this.AddArraySegment(readBuffer, offset, findLen);
+                    handshake = this.BufferSegments.Decode(Encoding.UTF8);
+                }
+                else
+                {
+                    handshake = this.BufferSegments.Decode(Encoding.UTF8, 0, this.BufferSegments.Count - prevMatched);
+                }
+            }
+            else
+            {
+                handshake = Encoding.UTF8.GetString(readBuffer, offset, findLen);
+            }
 
-            left = length - (result - offset + HeaderTerminator.Length);
+            left = length - findLen - (HeaderTerminator.Length - prevMatched);
 
             BufferSegments.ClearSegements();
 
-            m_HeadSeachState.Matched = 0;
-
-            return new WebSocketCommandInfo
+            if (!handshake.StartsWith(m_BadRequestPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return new WebSocketCommandInfo
+                    {
+                        Key = OpCode.Handshake.ToString(),
+                        Text = handshake
+                    };
+            }
+            else
+            {
+                return new WebSocketCommandInfo
                 {
-                    Key = OpCode.Handshake.ToString(),
+                    Key = OpCode.BadRequest.ToString(),
                     Text = handshake
                 };
+            }
         }
     }
 }

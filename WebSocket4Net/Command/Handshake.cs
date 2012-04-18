@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 namespace WebSocket4Net.Command
@@ -9,9 +8,11 @@ namespace WebSocket4Net.Command
     {
         public override void ExecuteCommand(WebSocket session, WebSocketCommandInfo commandInfo)
         {
-            if (!session.ProtocolProcessor.VerifyHandshake(commandInfo))
+            string description;
+
+            if (!session.ProtocolProcessor.VerifyHandshake(session, commandInfo, out description))
             {
-                session.Close();
+                session.Close(session.ProtocolProcessor.CloseStatusCode.ProtocolError, description);
                 return;
             }
 

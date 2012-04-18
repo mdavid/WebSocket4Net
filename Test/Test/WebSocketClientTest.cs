@@ -16,6 +16,36 @@ using WebSocket4Net;
 namespace WebSocket4Net.Test
 {
     [TestFixture]
+    public class SecureWebSocketClientTestHybi00 : WebSocketClientTest
+    {
+        public SecureWebSocketClientTestHybi00()
+            : base(WebSocketVersion.DraftHybi00, "Tls", "supersocket.pfx", "supersocket")
+        {
+
+        }
+
+        protected override string Host
+        {
+            get { return "wss://supersocket"; }
+        }
+    }
+
+    [TestFixture]
+    public class SecureWebSocketClientTestHybi10 : WebSocketClientTest
+    {
+        public SecureWebSocketClientTestHybi10()
+            : base(WebSocketVersion.DraftHybi10, "Tls", "supersocket.pfx", "supersocket")
+        {
+
+        }
+
+        protected override string Host
+        {
+            get { return "wss://supersocket"; }
+        }
+    }
+
+    [TestFixture]
     public class WebSocketClientTestHybi00 : WebSocketClientTest
     {
         public WebSocketClientTestHybi00()
@@ -45,9 +75,27 @@ namespace WebSocket4Net.Test
 
         private WebSocketVersion m_Version = WebSocketVersion.DraftHybi00;
 
+        private string m_Security;
+        private string m_CertificateFile;
+        private string m_Password;
+
+        protected virtual string Host
+        {
+            get { return "ws://127.0.0.1"; }
+        }
+
         protected WebSocketClientTest(WebSocketVersion version)
+            : this(version, string.Empty, string.Empty, string.Empty)
+        {
+            
+        }
+
+        protected WebSocketClientTest(WebSocketVersion version, string security, string certificateFile, string password)
         {
             m_Version = version;
+            m_Security = security;
+            m_CertificateFile = certificateFile;
+            m_Password = password;
         }
 
         [TestFixtureSetUp]
@@ -63,7 +111,9 @@ namespace WebSocket4Net.Test
                 Ip = "Any",
                 MaxConnectionNumber = 100,
                 Mode = SocketMode.Async,
-                Name = "SuperWebSocket Server"
+                Name = "SuperWebSocket Server",
+                Security = m_Security,
+                Certificate = new CertificateConfig { IsEnabled = true, FilePath = m_CertificateFile, Password = m_Password }
             }, SocketServerFactory.Instance);
         }
 
@@ -85,16 +135,16 @@ namespace WebSocket4Net.Test
             m_WebSocketServer.Stop();
         }
 
-        [Test]
+        [Test, Repeat(5)]
         public void ConnectionTest()
         {
-            WebSocket webSocketClient = new WebSocket(string.Format("ws://127.0.0.1:{0}/websocket", m_WebSocketServer.Config.Port), "basic", m_Version);
+            WebSocket webSocketClient = new WebSocket(string.Format("{0}:{1}/websocket", Host, m_WebSocketServer.Config.Port), "basic", m_Version);
             webSocketClient.Opened += new EventHandler(webSocketClient_Opened);
             webSocketClient.Closed += new EventHandler(webSocketClient_Closed);
             webSocketClient.MessageReceived += new EventHandler<MessageReceivedEventArgs>(webSocketClient_MessageReceived);
             webSocketClient.Open();
 
-            if (!m_OpenedEvent.WaitOne(1000))
+            if (!m_OpenedEvent.WaitOne(2000))
                 Assert.Fail("Failed to Opened session ontime");
 
             Assert.AreEqual(WebSocketState.Open, webSocketClient.State);
@@ -110,13 +160,13 @@ namespace WebSocket4Net.Test
         [Test, Repeat(10)]
         public void CloseWebSocketTest()
         {
-            WebSocket webSocketClient = new WebSocket(string.Format("ws://127.0.0.1:{0}/websocket", m_WebSocketServer.Config.Port), "basic", m_Version);
+            WebSocket webSocketClient = new WebSocket(string.Format("{0}:{1}/websocket", Host, m_WebSocketServer.Config.Port), "basic", m_Version);
             webSocketClient.Opened += new EventHandler(webSocketClient_Opened);
             webSocketClient.Closed += new EventHandler(webSocketClient_Closed);
             webSocketClient.MessageReceived += new EventHandler<MessageReceivedEventArgs>(webSocketClient_MessageReceived);
             webSocketClient.Open();
 
-            if (!m_OpenedEvent.WaitOne(1000))
+            if (!m_OpenedEvent.WaitOne(2000))
                 Assert.Fail("Failed to Opened session ontime");
 
             Assert.AreEqual(WebSocketState.Open, webSocketClient.State);
@@ -148,13 +198,13 @@ namespace WebSocket4Net.Test
         [Test, Repeat(10)]
         public void SendMessageTest()
         {
-            WebSocket webSocketClient = new WebSocket(string.Format("ws://127.0.0.1:{0}/websocket", m_WebSocketServer.Config.Port), "basic", m_Version);
+            WebSocket webSocketClient = new WebSocket(string.Format("{0}:{1}/websocket", Host, m_WebSocketServer.Config.Port), "basic", m_Version);
             webSocketClient.Opened += new EventHandler(webSocketClient_Opened);
             webSocketClient.Closed += new EventHandler(webSocketClient_Closed);
             webSocketClient.MessageReceived += new EventHandler<MessageReceivedEventArgs>(webSocketClient_MessageReceived);
             webSocketClient.Open();
 
-            if (!m_OpenedEvent.WaitOne(1000))
+            if (!m_OpenedEvent.WaitOne(2000))
                 Assert.Fail("Failed to Opened session ontime");
 
             StringBuilder sb = new StringBuilder();
@@ -193,7 +243,7 @@ namespace WebSocket4Net.Test
         [Test, Repeat(10)]
         public void SendDataTest()
         {
-            WebSocket webSocketClient = new WebSocket(string.Format("ws://127.0.0.1:{0}/websocket", m_WebSocketServer.Config.Port), "basic", m_Version);
+            WebSocket webSocketClient = new WebSocket(string.Format("{0}:{1}/websocket", Host, m_WebSocketServer.Config.Port), "basic", m_Version);
 
             if (!webSocketClient.SupportBinary)
                 return;
@@ -203,7 +253,7 @@ namespace WebSocket4Net.Test
             webSocketClient.DataReceived += new EventHandler<DataReceivedEventArgs>(webSocketClient_DataReceived);
             webSocketClient.Open();
 
-            if (!m_OpenedEvent.WaitOne(1000))
+            if (!m_OpenedEvent.WaitOne(2000))
                 Assert.Fail("Failed to Opened session ontime");
 
             StringBuilder sb = new StringBuilder();
@@ -228,11 +278,53 @@ namespace WebSocket4Net.Test
                 var data = Encoding.UTF8.GetBytes(message);
                 webSocketClient.Send(data, 0, data.Length);
 
-                if (!m_MessageReceiveEvent.WaitOne())
+                if (!m_MessageReceiveEvent.WaitOne(1000))
                     Assert.Fail("Cannot get response in time!");
 
                 Assert.AreEqual(message, m_CurrentMessage);
             }
+
+            webSocketClient.Close();
+
+            if (!m_CloseEvent.WaitOne(1000))
+                Assert.Fail("Failed to close session ontime");
+        }
+
+        [Test]
+        public void SendPingReactTest()
+        {
+            WebSocket webSocketClient = new WebSocket(string.Format("{0}:{1}/websocket", Host, m_WebSocketServer.Config.Port), "basic", m_Version);
+            webSocketClient.Opened += new EventHandler(webSocketClient_Opened);
+            webSocketClient.Closed += new EventHandler(webSocketClient_Closed);
+            webSocketClient.MessageReceived += new EventHandler<MessageReceivedEventArgs>(webSocketClient_MessageReceived);
+            webSocketClient.Open();
+
+            if (!m_OpenedEvent.WaitOne(2000))
+                Assert.Fail("Failed to Opened session ontime");
+
+            StringBuilder sb = new StringBuilder();
+
+            for (int i = 0; i < 10; i++)
+            {
+                sb.Append(Guid.NewGuid().ToString());
+            }
+
+            string messageSource = sb.ToString();
+
+            Random rd = new Random();
+
+            for (int i = 0; i < 10; i++)
+            {
+                int startPos = rd.Next(0, messageSource.Length - 2);
+                int endPos = rd.Next(startPos + 1, messageSource.Length - 1);
+
+                string message = messageSource.Substring(startPos, endPos - startPos);
+
+                Console.WriteLine("PING:" + message);
+                webSocketClient.Send("PING " + message);
+            }
+
+            Thread.Sleep(5000);
 
             webSocketClient.Close();
 

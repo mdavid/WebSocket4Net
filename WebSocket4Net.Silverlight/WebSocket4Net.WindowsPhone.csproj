@@ -29,7 +29,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\Bin\WindowsPhone\Debug\</OutputPath>
+    <OutputPath>..\Bin\sl40-windowsphone71\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE;SILVERLIGHT;WINDOWS_PHONE</DefineConstants>
     <NoStdLib>true</NoStdLib>
     <NoConfig>true</NoConfig>
@@ -39,7 +39,7 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>..\Bin\WindowsPhone\Release\</OutputPath>
+    <OutputPath>..\Bin\sl40-windowsphone71\Release\</OutputPath>
     <DefineConstants>TRACE;SILVERLIGHT;WINDOWS_PHONE</DefineConstants>
     <NoStdLib>true</NoStdLib>
     <NoConfig>true</NoConfig>
@@ -48,17 +48,26 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
-    <Reference Include="Newtonsoft.Json">
-      <HintPath>..\Reference\Json.NET\WindowsPhone\Newtonsoft.Json.dll</HintPath>
+    <Reference Include="SimpleJson">
+      <HintPath>..\Reference\SimpleJson\WP7\SimpleJson.dll</HintPath>
     </Reference>
-    <Reference Include="SuperSocket.ClientEngine">
-      <HintPath>..\Reference\SuperSocket\Silverlight\SuperSocket.ClientEngine.dll</HintPath>
+    <Reference Include="SuperSocket.ClientEngine.Common">
+      <HintPath>..\Reference\SuperSocket.ClientEngine\WP71\$(Configuration)\SuperSocket.ClientEngine.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="SuperSocket.ClientEngine.Core">
+      <HintPath>..\Reference\SuperSocket.ClientEngine\WP71\$(Configuration)\SuperSocket.ClientEngine.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="SuperSocket.ClientEngine.Protocol">
+      <HintPath>..\Reference\SuperSocket.ClientEngine\WP71\$(Configuration)\SuperSocket.ClientEngine.Protocol.dll</HintPath>
     </Reference>
     <Reference Include="system" />
     <Reference Include="System.Core" />
     <Reference Include="System.Net" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\WebSocket4Net\Command\BadRequest.cs">
+      <Link>Command\BadRequest.cs</Link>
+    </Compile>
     <Compile Include="..\WebSocket4Net\Command\Binary.cs">
       <Link>Command\Binary.cs</Link>
     </Compile>
@@ -67,6 +76,9 @@
     </Compile>
     <Compile Include="..\WebSocket4Net\Command\Handshake.cs">
       <Link>Command\Handshake.cs</Link>
+    </Compile>
+    <Compile Include="..\WebSocket4Net\Command\Ping.cs">
+      <Link>Command\Ping.cs</Link>
     </Compile>
     <Compile Include="..\WebSocket4Net\Command\Pong.cs">
       <Link>Command\Pong.cs</Link>
@@ -100,6 +112,12 @@
     </Compile>
     <Compile Include="..\WebSocket4Net\OpCode.cs">
       <Link>OpCode.cs</Link>
+    </Compile>
+    <Compile Include="..\WebSocket4Net\Protocol\CloseStatusCodeHybi10.cs">
+      <Link>Protocol\CloseStatusCodeHybi10.cs</Link>
+    </Compile>
+    <Compile Include="..\WebSocket4Net\Protocol\CloseStatusCodeRfc6455.cs">
+      <Link>Protocol\CloseStatusCodeRfc6455.cs</Link>
     </Compile>
     <Compile Include="..\WebSocket4Net\Protocol\DraftHybi00DataReader.cs">
       <Link>Protocol\DraftHybi00DataReader.cs</Link>
@@ -140,11 +158,17 @@
     <Compile Include="..\WebSocket4Net\Protocol\HandshakeReader.cs">
       <Link>Protocol\HandshakeReader.cs</Link>
     </Compile>
+    <Compile Include="..\WebSocket4Net\Protocol\ICloseStatusCode.cs">
+      <Link>Protocol\ICloseStatusCode.cs</Link>
+    </Compile>
     <Compile Include="..\WebSocket4Net\Protocol\IProtocolProcessor.cs">
       <Link>Protocol\IProtocolProcessor.cs</Link>
     </Compile>
     <Compile Include="..\WebSocket4Net\Protocol\ProtocolProcessorBase.cs">
       <Link>Protocol\ProtocolProcessorBase.cs</Link>
+    </Compile>
+    <Compile Include="..\WebSocket4Net\Protocol\ProtocolProcessorFactory.cs">
+      <Link>Protocol\ProtocolProcessorFactory.cs</Link>
     </Compile>
     <Compile Include="..\WebSocket4Net\Protocol\ReaderBase.cs">
       <Link>Protocol\ReaderBase.cs</Link>
@@ -170,7 +194,6 @@
     <Compile Include="..\WebSocket4Net\WebSocketVersion.cs">
       <Link>WebSocketVersion.cs</Link>
     </Compile>
-    <Compile Include="ASCIIEncoding.cs" />
     <Compile Include="Extensions.Silverlight.cs" />
     <Compile Include="MD5.cs" />
     <Compile Include="MD5Managed.cs" />
